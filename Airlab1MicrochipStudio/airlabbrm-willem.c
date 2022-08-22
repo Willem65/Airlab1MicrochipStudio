@@ -47,18 +47,20 @@
 
 #include "TWI.h"
 
-#define TWI_DEVICE_ADDRESS						0x70
+//#define TWI_DEVICE_ADDRESS						0x70
+//
+//#define TARGET_REGISTER							0x03
+//#define BYTES_TO_SEND							0x03
+//
+//uint8_t I2C_WriteBuffer[TWI_BUFFER_SIZE];
+//uint8_t I2C_ReadBuffer[TWI_BUFFER_SIZE];
+//uint8_t I2C_SlaveBuffer[TWI_BUFFER_SIZE];
 
-#define TARGET_REGISTER							0x03
-#define BYTES_TO_SEND							0x03
+unsigned char EEread[500];
+unsigned char wr[500];
 
-uint8_t I2C_WriteBuffer[TWI_BUFFER_SIZE];
-uint8_t I2C_ReadBuffer[TWI_BUFFER_SIZE];
-uint8_t I2C_SlaveBuffer[TWI_BUFFER_SIZE];
 
-unsigned char EEread[29];
-unsigned char EEread2[29];
-unsigned char wr[29];
+
 
 
 
@@ -155,7 +157,7 @@ unsigned char TempEnableSetup;
 void TimerControl(unsigned char Module);
 
 unsigned char TimerActive[NROFMODULES];
-
+unsigned char DirectorTBCUEBussActive;
 
 //unsigned char ConsoleModuleSettings[NROFMODULES][29];
 //unsigned char ConsoleMasterSettings[5];
@@ -825,8 +827,8 @@ void Init(void)
 	PORTC_DIRSET = 0b01111010;	    // Initialise port als uitgang LEDJES AANSTUREN  CLK2 DATA2 CLK1 DATA1 en STRB2
 	PORTB_DIRSET = 0b00000001;	    // Initialise port als uitgang LEDJES AANSTUREN  STRB1 
 	
-		PORTE_DIRCLR = 0b00000011;      //  Initialise port als ingang   IIC
-		//PORTE_DIRSET = 0b00000010;	    //  Initialise port als uitgang  IIC
+	PORTE_DIRCLR = 0b00000011;      //  Initialise port als ingang   IIC
+	//PORTE_DIRSET = 0b00000010;	    //  Initialise port als uitgang  IIC
 	
 
 	
@@ -1007,12 +1009,18 @@ void Init(void)
 			-> Enable low level interrupts
 			-> Enable global interrupts
 	*/	
-	TWIM_InitInterrupt();
-	//TWIM_Init();
-	PMIC_CTRL |= PMIC_LOLVLEN_bm;
+	//TWIM_InitInterrupt();
+	////TWIM_Init();
+	//PMIC_CTRL |= PMIC_LOLVLEN_bm;
+	
+	 PMIC_CTRL|=PMIC_HILVLEN_bm|PMIC_LOLVLEN_bm|PMIC_MEDLVLEN_bm; //enable high level, low level, medium level interrupt
+ 
+	 init_twi();	
+	
 	sei();
 	
 	uint16_t wacht;
+	
 	
 	
 	
@@ -1029,9 +1037,10 @@ void Init(void)
 		//
 
 	//
-	//for (int tm=0; tm<16; tm++)
+	//for (int tm=0; tm<29; tm++)
 	//{
-		//wr[tm]=1;
+		//wr[tm]=0;
+		//EEread[tm]=0;
 	//}
 	//
 	//TWIM_Transmit(I2CAddressEEProm, 0x0, wr, 16);
@@ -1043,7 +1052,7 @@ void Init(void)
 	//TWIM_Transmit(I2CAddressEEProm, 0x20, wr, 16);
 	//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));	
 				
-	
+	//
 	////------------------
 	//
 			//wr[0]=1;
@@ -1067,7 +1076,7 @@ void Init(void)
 			////TWIM_Transmit(I2CAddressEEProm, 0x10, wr, 16);
 			////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
 			//
-			//wr[16]=1;
+			//wr[16]=0;
 			//wr[17]=1;
 			//wr[18]=1;
 			//wr[19]=1;
@@ -1100,14 +1109,7 @@ void Init(void)
 			//
 			////TWIM_Transmit(I2CAddressEEProm, 0x20, wr, 13);
 			////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-			//
-			//
-			//
-			//
-			//
-			//
-			//
-		////-------------------
+		//
 			//int vlag=1;
 			//int bufsize = sizeof(wr);
 			//
@@ -1134,36 +1136,77 @@ void Init(void)
 		
 		
 	//**********************  Einde test code  *************************************
+	
+			//---------------------------------------------------------------------------------------------
+			
+			
+
+			
+			////for (int p=0; p<16; p++)
+			////{
+				////wr[p]=0;
+			////}
+			////
+////
+			//////TWIM_Transmit(I2CAddressEEProm, 0x10, buff, 16);
+			//////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			////
+			////TWIM_Transmit(I2CAddressEEProm, 0x20, wr, 13);
+			////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//-----------------------------------------------------------
 		
 //---------------------------------------------------------------------------------------			
 //            First Load all data from EEPROM (or Card?)
 //---------------------------------------------------------------------------------------
 	
+	//////////Address = 0x0000;
+	//////////
+	//////////// ModuleType
+	//////////TWIM_Receive(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
+	//////////while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+	//////////
+	//////////Address += NROFMODULES;
+		//////////
+	//////////// ConsoleModuleSettings
+	//////////for (cntModule=0; cntModule<8; cntModule++)
+	//////////{
+		//////////
+		////////////////TWIM_Receive(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+		////////////////while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+		////////////////Address += 32;
+		////////////Address += 29;
+				//////////
+		//////////int ad=0;
+				//////////
+		////////////for ( int mdd=0; mdd<2; mdd++)
+		//////////{					
+			//////////TWIM_Receive(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][ad]), 16);
+			//////////while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//////////ad +=16;
+			//////////Address += 16;
+			//////////TWIM_Receive(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][ad]), 16);
+			//////////while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//////////Address += 16;
+		//////////}				 
+	//////////}
+	//////////
+	//////////// ConsoleMasterSettings	
+	//////////TWIM_Receive(I2CAddressEEProm, Address, &(ConsoleMasterSettings[0]), 5);
+	//////////while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+	
+//-----------------------------------------------------------------------------------------------------------------------------------------------
+	
+	// First Load all data from EEPROM (or Card?)
 	Address = 0x0000;
-	
-	// ModuleType
-	TWIM_Receive(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
-	while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
-	
+	ReadData(I2CAddressEEProm, Address, &(ModuleType[0]), NROFMODULES);
 	Address += NROFMODULES;
-	
-	int t=0;
-	
-	// ConsoleModuleSettings
-	TWIM_Receive(I2CAddressEEProm, Address, EEread, 29);
-	while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
-	
-	for (t=0; t<30; t++)
+	for (cntModule=0; cntModule<16; cntModule++)
 	{
-		ConsoleModuleSettings[0][t]=EEread[t];
+		ReadData(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+		Address += 29;
 	}
-		
-	Address += 29;
-	
-	// ConsoleMasterSettings	
-	TWIM_Receive(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);
-	while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
-	
+	ReadData(I2CAddressEEProm, Address, &(ConsoleMasterSettings[0]), 5);	
+
 	
 //------------------------------------------------------------------------------------------------------------------------------------------------	
 
@@ -1214,72 +1257,89 @@ void Init(void)
 			SetLCD(1,"Config changed");
 			Delay(20);
 
-			ConsoleModuleSettings[cntModule][TIMERLINEA] = 0x01;
-			ConsoleModuleSettings[cntModule][TIMERLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][TIMERMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTLINEA] = 0x01;			
-			ConsoleModuleSettings[cntModule][STARTLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTFADER] = 0x01;
-			ConsoleModuleSettings[cntModule][STARTON] = 0x00;     //7
-			
-			
-			ConsoleModuleSettings[cntModule][STARTCUE] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTPULS] = 0x00;
-			ConsoleModuleSettings[cntModule][REMLINEA] = 0x00;
-			ConsoleModuleSettings[cntModule][REMLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][REMMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][DJMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][ANNMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][STUDIOMIC] = 0x00;   //15
-			
-			ConsoleModuleSettings[cntModule][ONAIR1LINEA] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR1LINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR1MIC] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR2LINEA] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR2LINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR2MIC] = 0x00;
-			ConsoleModuleSettings[cntModule][POWERON] = 0x00;
-			ConsoleModuleSettings[cntModule][MICATLINEA] = 0x00;   //23
-			
-			ConsoleModuleSettings[cntModule][MICATLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][REMONMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][REMONLINEA] = 0x00;
-			ConsoleModuleSettings[cntModule][REMONLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][SWITCHSTART] = 0x00;  //28
+			//ConsoleModuleSettings[cntModule][TIMERLINEA] = 0x01;
+			//ConsoleModuleSettings[cntModule][TIMERLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][TIMERMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTLINEA] = 0x01;			
+			//ConsoleModuleSettings[cntModule][STARTLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTFADER] = 0x01;
+			//ConsoleModuleSettings[cntModule][STARTON] = 0x00;     //7
+			//
+			//
+			//ConsoleModuleSettings[cntModule][STARTCUE] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTPULS] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMLINEA] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][DJMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][ANNMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][STUDIOMIC] = 0x00;   //15
+			//
+			//ConsoleModuleSettings[cntModule][ONAIR1LINEA] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR1LINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR1MIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR2LINEA] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR2LINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR2MIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][POWERON] = 0x00;
+			//ConsoleModuleSettings[cntModule][MICATLINEA] = 0x00;   //23
+			//
+			//ConsoleModuleSettings[cntModule][MICATLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMONMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMONLINEA] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMONLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][SWITCHSTART] = 0x00;  //28
+		//}
+//
+		//if (ModuleType[cntModule] == TELCO)
+		//{
+			//ConsoleModuleSettings[cntModule][TIMERMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTLINEA] = 0x01;
+			//ConsoleModuleSettings[cntModule][STARTLINEB] = 0x01;
+			//ConsoleModuleSettings[cntModule][STARTMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTFADER] = 0x00;
+			//ConsoleModuleSettings[cntModule][STARTON] = 0x01;
+			//ConsoleModuleSettings[cntModule][STARTPULS] = 0x00;
+			//ConsoleModuleSettings[cntModule][DJMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][ANNMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][STUDIOMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR1MIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][ONAIR2MIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][MICATLINEA] = 0x00;
+			//ConsoleModuleSettings[cntModule][MICATLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMONMIC] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMONLINEA] = 0x00;
+			//ConsoleModuleSettings[cntModule][REMONLINEB] = 0x00;
+			//ConsoleModuleSettings[cntModule][SWITCHSTART] = 0x00;
 		}
-
-		if (ModuleType[cntModule] == TELCO)
-		{
-			ConsoleModuleSettings[cntModule][TIMERMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTLINEA] = 0x01;
-			ConsoleModuleSettings[cntModule][STARTLINEB] = 0x01;
-			ConsoleModuleSettings[cntModule][STARTMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTFADER] = 0x00;
-			ConsoleModuleSettings[cntModule][STARTON] = 0x01;
-			ConsoleModuleSettings[cntModule][STARTPULS] = 0x00;
-			ConsoleModuleSettings[cntModule][DJMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][ANNMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][STUDIOMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR1MIC] = 0x00;
-			ConsoleModuleSettings[cntModule][ONAIR2MIC] = 0x00;
-			ConsoleModuleSettings[cntModule][MICATLINEA] = 0x00;
-			ConsoleModuleSettings[cntModule][MICATLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][REMONMIC] = 0x00;
-			ConsoleModuleSettings[cntModule][REMONLINEA] = 0x00;
-			ConsoleModuleSettings[cntModule][REMONLINEB] = 0x00;
-			ConsoleModuleSettings[cntModule][SWITCHSTART] = 0x00;
-		}
-	
-	
-
 	}
 	
-	//ModuleType[0] = 1;
-	//ModuleType[1] = 1;
-	
-		 
-	
+	ModuleType[0] = 0x1;
+	ModuleType[1] = 0x1;
+	ModuleType[2] = 0x1;
+	ModuleType[3] = 0x1;
+	ModuleType[4] = 0x1;
+	ModuleType[5] = 0x1;
+	ModuleType[6] = 1;
+	ModuleType[7] = 1;
+				//
+	//
+	ModuleType[8] = 1;
+	ModuleType[9] = 1;
+	ModuleType[10] = 1;
+	ModuleType[11] = 1;
+	ModuleType[12] = 1;
+	ModuleType[13] = 1;
+	ModuleType[14] = 1;
+	ModuleType[15] = 1;	
+	//////////
+	//////////ConsoleMasterSettings[0] = 1;			
+	//////////ConsoleMasterSettings[1] = 1;
+	//////////ConsoleMasterSettings[2] = 1;
+	//////////ConsoleMasterSettings[3] = 1;		 
+	//////////ConsoleMasterSettings[4] = 1;
+
 	
 	// Determine Startup setting
 	for (cntModule=0; cntModule<NROFMODULES; cntModule++)

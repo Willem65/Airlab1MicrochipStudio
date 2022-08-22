@@ -21,6 +21,8 @@ uint16_t wacht;
 	
 char IDString[30]= "D&R Airlab v2.04 - 08/2006";
 
+
+
 void DoSerial()
 {
 
@@ -130,82 +132,103 @@ void DoSerial()
 		break;
 		case STORE_EEPROM:
 		{			
+			//////////////unsigned char cntModule;
+			//////////////unsigned int Address = 0x0000;
+			//////////////
+			//////////////// ModuleType			
+			//////////////TWIM_Transmit( I2CAddressEEProm, Address, &(ModuleType[0]), NROFMODULES );
+			//////////////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//////////////
+			//////////////Address += NROFMODULES;
+//////////////
+			//////////////// ConsoleModuleSettings
+			//////////////for (cntModule=0; cntModule<8; cntModule++)
+			//////////////{
+				//////////////int ad=0;
+				//////////////
+				////////////////for ( int mdd=0; mdd<2; mdd++)
+				//////////////{			
+					//////////////TWIM_Transmit(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][ad]), 16);
+					//////////////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+					//////////////ad +=16;
+					//////////////Address += 16;
+					//////////////TWIM_Transmit(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][ad]), 16);					
+					//////////////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+					//////////////Address += 16;
+				//////////////}				
+			//////////////}
+						//////////////
+			//////////////// ConsoleMasterSettings
+			//////////////TWIM_Transmit(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);
+			//////////////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			
 			unsigned char cntModule;
 			unsigned int Address = 0x0000;
-			
-			TWIM_Transmit(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
-			while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-
+			WriteData(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
 			Address += NROFMODULES;
-			
-			
-			//--------------------------------------------------------------------
-			for (int t=0; t<29; t++)
+			for (cntModule=0; cntModule<16; cntModule++)
 			{
-				wr[t]=ConsoleModuleSettings[0][t];
+				WriteData(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+				Address += 29;
 			}
-			//----------------------------------------------------------------------
-			
-				
-			//----------------
-			int vlag=1;
-			int bufsize = sizeof(wr);
-			
-			for (int tm=0; tm<bufsize; tm++)
-			{
-				if ( (tm < 16) & (vlag==1) )
-				{
-					vlag=2;
-					TWIM_Transmit(I2CAddressEEProm, 0x10, wr, 16);
-					while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-				}
-				
-				if ( tm > 15 )
-				{
-					wr[tm-16]=wr[tm];
-				}
-			}
-			
-
-			TWIM_Transmit(I2CAddressEEProm, 32, wr, 13);
-			while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-			//------------------------------------------------------------------------------------------
-					
-			Address += 29;
-			
-			TWIM_Transmit(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);
-			while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-			for (wacht=0; wacht<65000; wacht++);
+			WriteData(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);			
 	
 		}
-		break;
-		
-		
-		//case STORE_SMARTCARD:
-		//{
-			//if (CardInserted)
+		break;	
+		case STORE_SMARTCARD:
+		{
+			//---------------------------------------------------------------------------------------------
+			unsigned int Address;
+				// First Load all data from EEPROM (or Card?)
+				Address = 0x0000;
+				ReadData(I2CAddressEEProm, Address, &(ModuleType[0]), NROFMODULES);
+				Address += NROFMODULES;
+				for (unsigned int cntModule=0; cntModule<16; cntModule++)
+				{
+					ReadData(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+					Address += 29;
+
+					// Watchdog
+					//PCON |= 0x10;
+					//T3 = 0;
+				}
+				ReadData(I2CAddressEEProm, Address, &(ConsoleMasterSettings[0]), 5);
+
+				//
+			//for (int p=0; p<16; p++)
 			//{
-				//unsigned char cntModule;
-				//unsigned int Address = 0x0000;
-				//WriteData(I2CAddressSmartCard, Address, ModuleType, NROFMODULES);
-				//Address += NROFMODULES;
-				//for (cntModule=0; cntModule<NROFMODULES; cntModule++)
-				//{
-					//WriteData(I2CAddressSmartCard, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
-					//Address += 29;
-				//}
-				//WriteData(I2CAddressSmartCard, Address, ConsoleMasterSettings, 5);
+				//EEread[p]=1;
 			//}
-		//}
-		//break;
-		//case GETCARD_INSERTED:
-		//{		 
-			//SerialBufferOut[SerialBufferOutPtrTop++] = CARD_INSERTED;
-			//SerialBufferOut[SerialBufferOutPtrTop++] = 0x00;
-////			SerialBufferOut[SerialBufferOutPtrTop++] = CardInserted;
-		//}
-		//break;
+				//
+			//
+			//TWIM_Transmit(I2CAddressEEProm, 0x20, EEread, 13);
+			//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//-----------------------------------------------------------		
 		
+			////////if (CardInserted)
+			////////{
+				////////unsigned char cntModule;
+				////////unsigned int Address = 0x0000;
+				////////WriteData(I2CAddressSmartCard, Address, ModuleType, NROFMODULES);
+				////////Address += NROFMODULES;
+				////////for (cntModule=0; cntModule<NROFMODULES; cntModule++)
+				////////{
+					////////WriteData(I2CAddressSmartCard, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+					////////Address += 29;
+				////////}
+				////////WriteData(I2CAddressSmartCard, Address, ConsoleMasterSettings, 5);
+			////////}
+		}
+		
+		
+		break;
+		case GETCARD_INSERTED:
+		////////{
+			////////SerialBufferOut[SerialBufferOutPtrTop++] = CARD_INSERTED;
+			////////SerialBufferOut[SerialBufferOutPtrTop++] = 0x00;
+			//////////			SerialBufferOut[SerialBufferOutPtrTop++] = CardInserted;
+		////////}		
+		break;
 		case FROMDIRECTOR_TELCO_ON_CONNECT:
 		{
 			if (Data)
@@ -255,33 +278,33 @@ void DoSerial()
 			}
 		}
 		break;
-		//case FROMDIRECTOR_TB:
-		//{
-			//if (Channel == TB_CONSOLE)
-			//{
-				//if (Data)
-				//{
-					//DirectorTBCUEBussActive = 1;
-				//}
-				//else
-				//{
-					//DirectorTBCUEBussActive = 0;
-				//}
-			//}
-			//else if (Channel == TB_ALL)
-			//{
-				//if (Data)
-				//{
-					//DirectorTBCUEBussActive = 1;
-				//}
-				//else
-				//{
-					//DirectorTBCUEBussActive = 0;
-				//}
-			//}
-			//CueControl();
-		//}
-		//break;
+		case FROMDIRECTOR_TB:
+		{
+			if (Channel == TB_CONSOLE)
+			{
+				if (Data)
+				{
+					DirectorTBCUEBussActive = 1;
+				}
+				else
+				{
+					DirectorTBCUEBussActive = 0;
+				}
+			}
+			else if (Channel == TB_ALL)
+			{
+				if (Data)
+				{
+					DirectorTBCUEBussActive = 1;
+				}
+				else
+				{
+					DirectorTBCUEBussActive = 0;
+				}
+			}
+			CueControl();
+		}
+		break;
 	}
 }
 

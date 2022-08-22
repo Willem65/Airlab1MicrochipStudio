@@ -6,6 +6,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include "lcd.h"
+#include "TWI.h"
 
 
 //#define		LCD_D4  0x1

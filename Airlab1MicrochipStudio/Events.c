@@ -1163,35 +1163,20 @@ void DoEvent(unsigned int Event)
 								}
 							}
 							break;
-							case 2:
 							{ // EEPROM Write
-								//unsigned char cntModule;
-								//unsigned int Address = 0x0000;
-//
-								//SetLCD(0,"\x80");
-								//SetLCD(1,"Saving...");
-								//
-								////WriteData(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
-								////Transmit the message
-								//TWIM_Transmit(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
-								//// Wait until data got transmitted
-								//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-								//
-								//Address += NROFMODULES;
-								//for (cntModule=0; cntModule<NROFMODULES; cntModule++)
-								//{
-									////WriteData(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
-									////Transmit the message
-									//TWIM_Transmit(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
-									//// Wait until data got transmitted
-									//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-									//Address += 29;
-								//}
-								////WriteData(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);
-								////Transmit the message
-								//TWIM_Transmit(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);
-								//// Wait until data got transmitted
-								//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+								unsigned char cntModule;
+								unsigned int Address = 0x0000;
+
+								SetLCD(0,"\x80");
+								SetLCD(1,"Saving...");
+								WriteData(I2CAddressEEProm, Address, ModuleType, NROFMODULES);
+								Address += NROFMODULES;
+								for (cntModule=0; cntModule<NROFMODULES; cntModule++)
+								{
+									WriteData(I2CAddressEEProm, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+									Address += 29;
+								}
+								WriteData(I2CAddressEEProm, Address, ConsoleMasterSettings, 5);
 							}
 							break;
 							case 3:
@@ -1263,33 +1248,20 @@ void DoEvent(unsigned int Event)
 							break;
 							case 4:
 							{ // SmartCard Write
-			 					unsigned char cntModule;
+								unsigned char cntModule;
 								unsigned int Address = 0x0000;
 
 								SetLCD(0,"\x80");
 								SetLCD(1,"Saving...");
 
-								////WriteData(I2CAddressSmartCard, Address, ModuleType, NROFMODULES);
-																////Transmit the message
-																//TWIM_Transmit(I2CAddressSmartCard, Address, ModuleType, NROFMODULES);
-																//// Wait until data got transmitted
-																//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-								//
-								//Address += NROFMODULES;
-								//for (cntModule=0; cntModule<NROFMODULES; cntModule++)
-								//{
-									////WriteData(I2CAddressSmartCard, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
-																	////Transmit the message
-																	//TWIM_Transmit(I2CAddressSmartCard, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
-																	//// Wait until data got transmitted
-																	//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
-									//Address += 29;
-								//}
-								////WriteData(I2CAddressSmartCard, Address, ConsoleMasterSettings, 5);
-																////Transmit the message
-																//TWIM_Transmit(I2CAddressSmartCard, Address, ConsoleMasterSettings, 5);
-																//// Wait until data got transmitted
-																//while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+								WriteData(I2CAddressSmartCard, Address, ModuleType, NROFMODULES);
+								Address += NROFMODULES;
+								for (cntModule=0; cntModule<NROFMODULES; cntModule++)
+								{
+									WriteData(I2CAddressSmartCard, Address, &(ConsoleModuleSettings[cntModule][0]), 29);
+									Address += 29;
+								}
+								WriteData(I2CAddressSmartCard, Address, ConsoleMasterSettings, 5);
 							}
 							break;
 						}

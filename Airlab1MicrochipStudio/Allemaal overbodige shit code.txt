@@ -301,17 +301,151 @@
 	
 	
 	
+		//for (t=0; t<30; t++)
+	//{
+		//ConsoleModuleSettings[0][t]=EEread[t];
+	//}
+
+			////----------------Read buffer -------------------------------------------------------------
+			//int vlag2=1;
+//
+			//
+			//for (int tm=0; tm<29; tm++)
+			//{
+				//if ( (tm < 16) & (vlag2==1) )
+				//{
+					//vlag2=2;
+					//TWIM_Receive(I2CAddressEEProm, 0x10, EEread, 16);
+					//while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+				//}
+				//
+				////if ( tm > 15 )
+				////{
+					////EEread[tm-16]=EEread[tm];
+				////}
+			//}
+			//
+			//for (int t=0; t<15; t++)
+			//{
+				//ConsoleModuleSettings[0][t]=EEread[t];
+			//}			
+			//
+			//
+			//TWIM_Receive(I2CAddressEEProm, 32, EEread, 13);
+			//while(!((TWIM_Status() == TWI_MASTER_RECEIVED) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//
+			//for (int t=16; t<30; t++)
+			//{
+				//ConsoleModuleSettings[0][t]=EEread[t-16];
+			//}			
+//
+			////------------------------------------------------------------------------------------------	
+		
+		
+		
+						
+			//////--------------------------------------------------------------------
+			////for (int t=0; t<29; t++)
+			////{
+				//////wr[t]=ConsoleModuleSettings[0][t];
+				////wr[t]=0;
+			////}
+			//////----------------------------------------------------------------------
+			////
+				////
+			//////----------------
+			////int vlag=1;
+			////int bufsize = sizeof(wr);
+			////
+			////for (int tm=0; tm<bufsize; tm++)
+			////{
+				////if ( (tm < 16) & (vlag==1) )
+				////{
+					////vlag=2;
+					////TWIM_Transmit(I2CAddressEEProm, 0x10, wr, 16);
+					////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+				////}
+				////
+				////if ( tm > 15 )
+				////{
+					////wr[tm-16]=wr[tm];
+				////}
+			////}
+			////
+////
+			////TWIM_Transmit(I2CAddressEEProm, 32, wr, 13);
+			////while(!((TWIM_Status() == TWI_MASTER_SEND) || (TWIM_Status() == TWI_MASTER_ERROR)));
+			//////------------------------------------------------------------------------------------------
 	
 	
 	
 	
 	
 	
+	//
+//void TWIM_SendAddress(uint8_t Address)
+//{
+	//// You can use this function for read and write, because the WIF and RIF flag is cleared when you write
+	//// an address into the ADDR register. So after each address transfer (read or write) the right interrupt flag
+	//// is set.
+	//TWIE.MASTER.ADDR = Address;
+	//while(!((TWIE.MASTER.STATUS & TWI_MASTER_WIF_bm) || (TWIE_MASTER_STATUS & TWI_MASTER_RIF_bm)));
+//}
+//
+//
+//
+//void TWIM_SendData(uint8_t Data)
+//{
+	//TWIE.MASTER.DATA = Data;
+	//while(!(TWIE.MASTER.STATUS & TWI_MASTER_WIF_bm));
+	//for (wacht=0; wacht<8000; wacht++);
+//}
+//
+//
+//
+//uint8_t TWIM_ReadData(uint8_t NACK)
+//{
+	//uint8_t Data = 0x00;
+//
+	//while(!(TWIE.MASTER.STATUS & TWI_MASTER_RIF_bm));
+	//Data = TWIE.MASTER.DATA;
+//
+	//if(!NACK)
+	//{
+		//TWIE.MASTER.CTRLC = TWI_MASTER_CMD_RECVTRANS_gc;
+	//}
+//
+	//return Data;
+//}
+//
+
+
+//void TWIM_SendStop(uint8_t NACK)
+//{
+	//if(NACK)
+	//{
+		//TWIE.MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
+	//}
+	//else
+	//{
+		//TWIE.MASTER.CTRLC = TWI_MASTER_CMD_STOP_gc;
+	//}
+	//for (wacht=0; wacht<8000; wacht++);
+//}
 	
 	
 	
-	
-	
+//void TWIM_Init(void)
+//{
+	//TWIE.CTRL = 0x00;
+	//TWIE.MASTER.BAUD = 0x14;
+	//TWIE.MASTER.CTRLA = TWI_MASTER_ENABLE_bm;
+	//TWIE.MASTER.CTRLB = 0x00;
+//
+	//// Set the state machine into idle state
+	//TWIE.MASTER.STATUS |= TWI_MASTER_BUSSTATE_IDLE_gc;
+//}
+
 	
 	
 	

@@ -1,304 +1,170 @@
 /*
  * TWIM.c
  *
- *  Copyright (C) Daniel Kampert, 2020
- *	Website: www.kampis-elektroecke.de
- *  File info: Driver for XMega master mode TWI.
-
-  GNU GENERAL PUBLIC LICENSE:
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-  Errors and commissions should be reported to DanielKampert@kampis-elektroecke.de.
  */
 
 #include "TWI.h"
 
-static TWI_Message_t Message;
-volatile uint16_t wacht;
+//						Aantal Bytes     // Buffer           // Teller       // vlag completed
+unsigned char  twi_data_buffer[50], twi_data_buffer2[500], twi_data_buffer3[500], twi_data_count, vlag=1;
 
-static void TWIM_ErrorHandler(void)
-{
-	Message.Status = TWI_MASTER_ERROR;
+unsigned char twi_no_of_bytes, W_transfer_Interrupt_complete, R_transfer_Interrupt_complete;
 
-	Message.Device->MASTER.CTRLC = TWI_MASTER_CMD_STOP_gc;
-}
-
-static void TWIM_ArbitrationLostHandler(void)
-{
-	TWIM_ErrorHandler();
-}
-
-static void TWIM_WriteHandler(void)
-{
-	// Abort transmission if slave has send an NACK
-	if(Message.Device->MASTER.STATUS & TWI_MASTER_RXACK_bm)
-	{
-		// Slave send NACK instead of ACK - abort transmission
-		TWIM_ErrorHandler();
-	}
-	else
-	{
-		if(Message.Status == TWI_MASTER_REGISTER)
-		{
-			Message.Device->MASTER.DATA = Message.Register;
-
-			if(Message.BytesRead > 0x00)
-			{
-				Message.Status = TWI_MASTER_ADDRESS;
-			}
-			else
-			{
-				Message.Status = TWI_MASTER_WRITE;
-			}
-		}
-		else if(Message.Status == TWI_MASTER_ADDRESS)
-		{
-			Message.Device->MASTER.ADDR = TWI_READ(Message.DeviceAddress);
-			Message.Status = TWI_MASTER_READ;
-		}
-		else if(Message.Status == TWI_MASTER_WRITE)
-		{
-			if ( Message.IndexWrite  < Message.BytesWrite  )
-			{
-				Message.Device->MASTER.DATA = Message.BufferWrite[ Message.IndexWrite++];
-				
-			}
-			else
-			{
-				Message.Device->MASTER.CTRLC = TWI_MASTER_CMD_STOP_gc;
-				Message.Status = TWI_MASTER_SEND;
-			}
-		}
-	}
-}
-
-static void TWIM_ReadHandler(void)
-{
-	if(Message.Status == TWI_MASTER_READ)
-	{
-		// Check for buffer overflow
-		if(Message.IndexRead < TWI_BUFFER_SIZE)
-		{
-			Message.BufferRead[Message.IndexRead++] = Message.Device->MASTER.DATA;
-		}
-		else
-		{
-			Message.Device->MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
-			Message.Status = TWI_MASTER_BUFFEROVERFLOW;
-		}
-		
-		if(Message.IndexRead < Message.BytesRead)
-		{
-			Message.Device->MASTER.CTRLC = TWI_MASTER_CMD_RECVTRANS_gc;
-		}
-		else
-		{
-			Message.Device->MASTER.CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
-			Message.Status = TWI_MASTER_RECEIVED;
-		}
-	}
-	else
-	{
-		TWIM_ErrorHandler();		
-	}
-}
-
-void TWIM_Init(void)
-{
-	TWIE_CTRL = 0x00;
-	TWIE_MASTER_BAUD = 0x28;
-	TWIE_MASTER_CTRLA = TWI_MASTER_ENABLE_bm;
-	TWIE_MASTER_CTRLB = 0x00;
-
-	// Set the state machine into idle state
-	TWIE_MASTER_STATUS |= TWI_MASTER_BUSSTATE_IDLE_gc;
-}
-
-void TWIM_InitInterrupt(void)
-{
-	TWIE_CTRL = 0x00;
-	TWIE_MASTER_BAUD = 0x28;
-	TWIE_MASTER_CTRLA = TWI_MASTER_INTLVL_LO_gc | TWI_MASTER_RIEN_bm | TWI_MASTER_WIEN_bm | TWI_MASTER_ENABLE_bm;
-	TWIE_MASTER_CTRLB = 0x00;
-
-	// Set the state machine into idle state
-	TWIE_MASTER_STATUS |= TWI_MASTER_BUSSTATE_IDLE_gc;
-}
-
-void TWIM_SendAddress(uint8_t Address)
-{
-	// You can use this function for read and write, because the WIF and RIF flag is cleared when you write
-	// an address into the ADDR register. So after each address transfer (read or write) the right interrupt flag
-	// is set.
-	TWIE_MASTER_ADDR = Address;
-	while(!((TWIE_MASTER_STATUS & TWI_MASTER_WIF_bm) || (TWIE_MASTER_STATUS & TWI_MASTER_RIF_bm)));
-}
-
-void TWIM_SendData(uint8_t Data)
-{
-	TWIE_MASTER_DATA = Data;
-	while(!(TWIE_MASTER_STATUS & TWI_MASTER_WIF_bm));
-	for (wacht=0; wacht<20000; wacht++);
-}
-
-uint8_t TWIM_ReadData(uint8_t NACK)
-{
-	uint8_t Data = 0x00;
-
-	while(!(TWIE_MASTER_STATUS & TWI_MASTER_RIF_bm));
-	Data = TWIE_MASTER_DATA;
-
-	if(!NACK)
-	{
-		TWIE_MASTER_CTRLC = TWI_MASTER_CMD_RECVTRANS_gc;
-	}
-
-	return Data;
-}
-
-void TWIM_SendStop(uint8_t NACK)
-{
-	if(NACK)
-	{
-		TWIE_MASTER_CTRLC = TWI_MASTER_ACKACT_bm | TWI_MASTER_CMD_STOP_gc;
-	}
-	else
-	{
-		TWIE_MASTER_CTRLC = TWI_MASTER_CMD_STOP_gc;
-	}
-}
+uint16_t wacht;
 
 
+//void init_twi()
+//{
+	//TWIE_MASTER_BAUD=0x14; //baud rate is set such that ftwi=100KHz	
+	//TWIE_CTRL=0x00; //SDA hold time off, normal TWI operation 	
+	//TWIE_MASTER_CTRLA|=TWI_MASTER_INTLVL_gm|TWI_MASTER_RIEN_bm|TWI_MASTER_WIEN_bm|TWI_MASTER_ENABLE_bm; //enable high priority read and write interrupt, enable MASTER
+	////TWIE_MASTER_CTRLA|=TWI_MASTER_ENABLE_bm;
+	////PMIC_LOLVLEN_bm	
+	//TWIE_MASTER_CTRLB=0x00; //no inactive bus timeout, no quick command and smart mode enabled	
+	//TWIE_MASTER_CTRLC=0x00; //initially send ACK and no CMD selected	
+	//TWIE_MASTER_STATUS|=TWI_MASTER_RIF_bm|TWI_MASTER_WIF_bm|TWI_MASTER_ARBLOST_bm|TWI_MASTER_BUSERR_bm|TWI_MASTER_BUSSTATE0_bm; //clear all flags initially and select bus state IDLE
+//}
 
-//void TWIM_TransmitBytes(uint8_t DeviceAddress, uint8_t Bytes, uint8_t* Data)
-void TWIM_TransmitBytes(uint8_t DeviceAddress, uint8_t* Data, uint8_t Bytes)
-{
-	Message.BufferRead = 0x00;
-	Message.BytesRead = 0x00;
+ 
+ // I2CAddress, StartAddress, Buffer, NrOfBytes
+ void twi_write(unsigned char reg_addr,unsigned char* reg_data, unsigned char NrOfBytes)
+ { 
+	 //twi_data_count=0;
+	 //NrOfBytes += 2;
+	 //
+	 	//for ( int t=0; t<485; t++ )
+	 	//twi_data_buffer3[t] = *(reg_data);
+	 //
+	 //while( twi_data_count < NrOfBytes )
+	 //{
+		//if ( twi_data_count == 0 )
+		//{
+			//TWIE_MASTER_ADDR=RTC_ADDR|RTC_WRITE;  // Schrijf het Device adres, gebeurd altijd als eerste, ook zonder interrupt, ack wordt ook ontvangen
+			//while ( W_transfer_Interrupt_complete != 1 );	// Wacht totdat de interrupt is uitgevoerd, klaar is , in deze regel blijft hij hangen, i2c wordt dan maar een keer verstuurd, tenzij
+			////                                             // er een interrupt aan staat want dan komt ie hier wel weer opnieuw in terug
+			//W_transfer_Interrupt_complete = 0;
+			//twi_data_count++;
+		//}
+		//
+		//if ( twi_data_count == 1 )
+		//{
+			//TWIE_MASTER_DATA=reg_addr;  // readres
+			//while ( W_transfer_Interrupt_complete != 1 );
+			//W_transfer_Interrupt_complete = 0;
+			//twi_data_count++;
+		//}
+		//
+		//if ( twi_data_count > 1 )
+		//{		
+			//TWIE_MASTER_DATA= (twi_data_buffer3[twi_data_count-2]) & 0x01;  
+			////TWIE_MASTER_DATA= 1;                              // Hier even dit laten staan om de EEprom bewust te vullen met allemaal eenen of nullen
+			//while ( W_transfer_Interrupt_complete != 1 );
+			//W_transfer_Interrupt_complete = 0;
+			//twi_data_count++;
+		//}
+	 //}
+	////send stop condition if all bytes are transferred
+	//TWIE_MASTER_CTRLC=(1<<TWI_MASTER_CMD1_bp)|(1<<TWI_MASTER_CMD0_bp);	 
+	//for (wacht=0; wacht<20000; wacht++);
 
-	Message.IndexWrite = 0x00;
-	Message.BufferWrite = Data;
-	Message.BytesWrite = Bytes;
-	Message.Device = &TWIE;
-	Message.DeviceAddress = DeviceAddress;
-	Message.Register = 0x00;
-	Message.Status = TWI_MASTER_WRITE;
-
-	// Start the transmission by writing the address
-	Message.Device->MASTER.ADDR = TWI_WRITE(Message.DeviceAddress);
+ }
+ 
+ 
+ 
+ void twi_read(unsigned char StartAddress, unsigned char* Data, unsigned char NrOfBytes)
+ {
 	
-	for (wacht=0; wacht<15000; wacht++);
-}
+	//twi_data_count = 0;
+	//NrOfBytes += 3;
+	//
+	//
+	//while( twi_data_count < NrOfBytes )
+	//{
+		//if ( twi_data_count == 0 )
+		//{	 
+			//TWIE_MASTER_ADDR=RTC_ADDR|RTC_WRITE;  // Schrijf het Device adres, gebeurd altijd als eerste, ook zonder interrupt, ack wordt ook ontvangen	 
+			//while ( W_transfer_Interrupt_complete != 1 );	// Wacht totdat de interrupt is uitgevoerd, klaar is , in deze regel blijft hij hangen, i2c wordt dan maar een keer verstuurd, tenzij 
+			////                                             // er een interrupt aan staat want dan komt ie hier wel doorheen 
+			//W_transfer_Interrupt_complete = 0; 		
+			//twi_data_count++;
+		//}
+	//
+		//if ( twi_data_count == 1 )
+		//{
+			//TWIE_MASTER_DATA=StartAddress;					// readres	 	 
+			//while ( W_transfer_Interrupt_complete != 1 );
+			//W_transfer_Interrupt_complete = 0;
+			//twi_data_count++;
+		//}
+			//
+		//if ( twi_data_count == 2 )
+		//{
+			//TWIE_MASTER_ADDR=RTC_ADDR|RTC_READ;				// Read Device
+			//while ( R_transfer_Interrupt_complete != 1 );
+			//R_transfer_Interrupt_complete = 0;
+			//twi_data_count++;
+		//}			
+			//
+		//if ( twi_data_count > 2 )
+		//{						
+			////send acknowledge
+			//TWIE_MASTER_CTRLC=(1<<TWI_MASTER_CMD1_bp)|(0<<TWI_MASTER_CMD0_bp);
+			//while ( R_transfer_Interrupt_complete != 1 );
+			//R_transfer_Interrupt_complete = 0;
+			//twi_data_buffer2[twi_data_count-3]=TWIE_MASTER_DATA;  //Hier wordt de DATA in de buffer gezet
+			//twi_data_count++;
+		//}			
+	//}
+	//
+	//TWIE_MASTER_CTRLC=(1<<TWI_MASTER_ACKACT_bp)|(1<<TWI_MASTER_CMD1_bp)|(1<<TWI_MASTER_CMD0_bp);	
+	//for ( int t=0; t<485; t++ )
+	//*(Data+t) = twi_data_buffer2[t];
+ }
 
 
+ 
+ 
+ //ISR(TWIE_TWIM_vect)
+ //{
+	 ////If TWI arbitration is lost send STOP
+	 //if(TWIE_MASTER_STATUS & (1<<TWI_MASTER_ARBLOST_bp))
+	 //{
+		 //TWIE_MASTER_CTRLC=(1<<TWI_MASTER_CMD1_bp)|(1<<TWI_MASTER_CMD0_bp); //send stop condition
+	 //}
+	 //
+	 ////If TWI bus error flag is set or NACK received then send STOP 
+	 //if((TWIE_MASTER_STATUS & (1<<TWI_MASTER_BUSERR_bp))||(TWIE_MASTER_STATUS & (1<<TWI_MASTER_RXACK_bp)))
+	 //{
+		 //TWIE_MASTER_CTRLC=(1<<TWI_MASTER_CMD1_bp)|(1<<TWI_MASTER_CMD0_bp); //send stop condition
+	 //}
+	 //
+	  //
+	 ////If TWI write interrupt flag is set	 
+	 //if(TWIE_MASTER_STATUS & (1<<TWI_MASTER_WIF_bp))
+	 //{ 
+		 //if(!(TWIE_MASTER_STATUS & (1<<TWI_MASTER_RXACK_bp))) //check whether acknowledge is received or not
+		 //{			 
+			////TWIE_MASTER_DATA=twi_data_buffer[twi_data_count++];
+			//W_transfer_Interrupt_complete = 1;
+			//PORTA_OUTTGL |= 0x80;  // om als trigger puls te gebruiken voor de oscilloscoop		 
+		 //} 
+	 //}
+	 //else
+	 //{
+		 	//W_transfer_Interrupt_complete = 0;
+	 //}
+	 //
+//
+	 ////If read interrupt flag is set 
+	 //if(TWIE_MASTER_STATUS & (1<<TWI_MASTER_RIF_bp)) //Check whether read interrupt flag is set or not
+	 //{	 
+		 //////twi_data_buffer2[twi_data_count++]=TWIE_MASTER_DATA;  //Hier wordt de DATA in de buffer gezet
+		//R_transfer_Interrupt_complete = 1;
+		//PORTA_OUTTGL |= 0x80;  // om als trigger puls te gebruiken voor de oscilloscoop
+	 //}
+	 //else
+	 //{
+		//R_transfer_Interrupt_complete = 0;
+	 //}
+ //}
 
-//void TWIM_Transmit(uint8_t DeviceAddress, uint8_t Register, uint8_t Bytes, uint8_t* Data)
-void TWIM_Transmit(uint8_t DeviceAddress, uint8_t Register, unsigned char* Data, uint8_t Bytes)
-{
-	Message.BufferRead = 0x00;
-	Message.BytesRead = 0x00;	
-
-	Message.IndexWrite = 0x00;
-	Message.BufferWrite = Data;
-	Message.BytesWrite = Bytes;
-	Message.Device = &TWIE;
-	Message.DeviceAddress = DeviceAddress;
-	Message.Register = Register;
-	Message.Status = TWI_MASTER_REGISTER;
-
-	// Start the transmission by writing the address
-	Message.Device->MASTER.ADDR = TWI_WRITE(Message.DeviceAddress);
-
-	for (wacht=0; wacht<15000; wacht++);
-
-}
-
-//void TWIM_ReceiveBytes(uint8_t DeviceAddress, uint8_t Bytes, uint8_t* Data)
-void TWIM_ReceiveBytes(uint8_t DeviceAddress, uint8_t* Data, uint8_t Bytes)
-{
-	Message.BufferWrite = 0x00;
-	Message.BytesWrite = 0x00;
-
-	Message.IndexRead = 0x00;
-	Message.BufferRead = Data;
-	Message.BytesRead = Bytes;
-	Message.Device = &TWIE;
-	Message.DeviceAddress = DeviceAddress;
-	Message.Register = 0x00;
-	Message.Status = TWI_MASTER_READ;
-
-	// Start the transmission by writing the address
-	Message.Device->MASTER.ADDR = TWI_READ(Message.DeviceAddress);
-	
-	for (wacht=0; wacht<20000; wacht++);
-}
-
-//void TWIM_Receive(uint8_t DeviceAddress, uint8_t Register, uint8_t Bytes, uint8_t* Data)
-void TWIM_Receive(uint8_t DeviceAddress, uint8_t Register, unsigned char* Data, uint8_t Bytes)
-{
-	Message.BufferWrite = 0x00;
-	Message.BytesWrite = 0x00;
-
-	Message.IndexRead = 0x00;
-	Message.BufferRead = Data;
-	Message.BytesRead = Bytes;
-	Message.Device = &TWIE;
-	Message.DeviceAddress = DeviceAddress;
-	Message.Register = Register;
-	Message.Status = TWI_MASTER_REGISTER;
-
-	// Start the transmission by writing the address
-	Message.Device->MASTER.ADDR = TWI_WRITE(Message.DeviceAddress);
-	
-	for (wacht=0; wacht<20000; wacht++);
-}
-
-TWI_MasterStatus_t TWIM_Status(void)
-{
-	return Message.Status;
-}
-
-ISR(TWIE_TWIM_vect)
-{
-	uint8_t Status = Message.Device->MASTER.STATUS;
-
-	/*
-		Arbitration lost
-	*/
-	if(Status & TWI_MASTER_ARBLOST_bm)
-	{
-		TWIM_ArbitrationLostHandler();
-	}
-	/*
-		Write interrupt
-	*/
-	else if(Status & TWI_MASTER_WIF_bm)
-	{	
-		TWIM_WriteHandler();
-	}
-	/*
-		Read interrupt
-	*/
-	else if(Status & TWI_MASTER_RIF_bm)
-	{
-		TWIM_ReadHandler();
-	}
-	/*
-		Error
-	*/
-	else
-	{
-		TWIM_ErrorHandler();
-	}
-}

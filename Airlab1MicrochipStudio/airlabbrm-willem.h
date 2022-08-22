@@ -224,11 +224,13 @@ extern void TimerControl(unsigned char Module);
 //extern unsigned char ConsoleModuleSettings[NROFMODULES][29];
 //extern unsigned char ConsoleMasterSettings[5];
 
-extern unsigned char UndoConsoleModuleSettings[NROFMODULES][29];
+//extern unsigned char UndoConsoleModuleSettings[NROFMODULES][29];
 
 extern unsigned char UndoConsoleMasterSettings[5];
 
-extern unsigned char EEread[29];
-extern unsigned char wr[29];
+extern unsigned char DirectorTBCUEBussActive;
+
+extern unsigned char EEread[500];
+extern unsigned char wr[500];
 
 #endif
